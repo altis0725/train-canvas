@@ -29,12 +29,14 @@ export function registerLineAuthRoutes(app: Express) {
         const redirectUri = `${baseUrl}${callbackPath}`;
 
         // Store state and redirectUri in cookie to verify in callback.
-        // SameSite=None で LINE ドメインからのリダイレクトでも送信されるようにする。
+        // SameSite=None requires Secure to be true.
+        // On http://localhost, Secure is false, so we must use Lax (or Strict).
+        const isSecure = req.protocol === "https" || req.headers["x-forwarded-proto"] === "https";
         const cookieOptions = {
             httpOnly: true,
             maxAge: 300000, // 5 min
-            sameSite: "none" as const,
-            secure: req.protocol === "https" || req.headers["x-forwarded-proto"] === "https",
+            sameSite: isSecure ? "none" as const : "lax" as const,
+            secure: isSecure,
         };
         res.cookie("line_auth_state", state, cookieOptions);
         res.cookie("line_redirect_uri", redirectUri, cookieOptions);

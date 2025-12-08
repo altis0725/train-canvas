@@ -14,17 +14,17 @@ import { useEffect, useState } from "react";
 export default function MyPage() {
   const { user, isAuthenticated, loading } = useAuth();
   const [, setLocation] = useLocation();
-  
+
   // Get tab from URL query parameter
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam || 'videos');
-  
+
   // Reservation edit dialog state
   const [editingReservation, setEditingReservation] = useState<number | null>(null);
   const [editDate, setEditDate] = useState<string>("");
   const [editSlot, setEditSlot] = useState<number | null>(null);
-  
+
   const handleReserveVideo = (videoId: number) => {
     // Store videoId in sessionStorage for use after payment
     sessionStorage.setItem('pendingReservationVideoId', videoId.toString());
@@ -33,26 +33,26 @@ export default function MyPage() {
     // Create Stripe checkout session
     createCheckoutMutation.mutate({ videoId });
   };
-  
+
   const handleEditReservation = (reservationId: number, currentDate: Date, currentSlot: number) => {
     setEditingReservation(reservationId);
     setEditDate(currentDate.toISOString().split('T')[0]);
     setEditSlot(currentSlot);
   };
-  
+
   const handleUpdateReservation = () => {
     if (!editingReservation || !editDate || editSlot === null) {
       toast.error("日付と時間を選択してください");
       return;
     }
-    
+
     updateReservationMutation.mutate({
       id: editingReservation,
       projectionDate: new Date(editDate),
       slotNumber: editSlot,
     });
   };
-  
+
   useEffect(() => {
     if (tabParam) {
       setActiveTab(tabParam);
@@ -61,7 +61,19 @@ export default function MyPage() {
 
   const { data: videos, isLoading: videosLoading, refetch: refetchVideos } = trpc.videos.getUserVideos.useQuery(
     undefined,
-    { enabled: isAuthenticated }
+    {
+      enabled: isAuthenticated,
+      refetchInterval: (query) => {
+        // If query is loading or has error, don't poll
+        if (query.state.status === 'error' || query.state.status === 'pending') return false;
+
+        // Check if any video is in processing status
+        const hasProcessingVideo = query.state.data?.some(video => video.status === 'processing');
+
+        // Poll every 5 seconds if there are processing videos
+        return hasProcessingVideo ? 5000 : false;
+      }
+    }
   );
 
   const { data: reservations, isLoading: reservationsLoading, refetch: refetchReservations } =
@@ -71,7 +83,7 @@ export default function MyPage() {
     undefined,
     { enabled: isAuthenticated }
   );
-  
+
   // Get available slots for edit dialog
   const { data: availableSlots, isLoading: slotsLoading } = trpc.reservations.getAvailableSlots.useQuery(
     { date: editDate ? new Date(editDate) : new Date() },
@@ -97,7 +109,7 @@ export default function MyPage() {
       toast.error("キャンセルに失敗しました: " + error.message);
     },
   });
-  
+
   const updateReservationMutation = trpc.reservations.update.useMutation({
     onSuccess: () => {
       toast.success("予約を変更しました");
@@ -207,20 +219,20 @@ export default function MyPage() {
   };
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-12">
-      
+    <div className="min-h-screen bg-[#020617] text-white py-12">
+
       <main className="flex-1 py-12">
         <div className="container max-w-6xl">
           {/* User Header */}
           <div className="mb-12">
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold">
+              <div className="w-16 h-16 rounded-full bg-cyan-900 border border-cyan-500/50 flex items-center justify-center text-cyan-100 text-2xl font-bold box-shadow-[0_0_15px_cyan]">
                 {user?.name?.charAt(0) || "U"}
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">マイページ</h1>
-                <p className="text-lg text-slate-600">
-                  ようこそ、{user?.name || "ゲスト"}さん
+                <h1 className="text-3xl font-bold text-white font-orbitron tracking-wider text-glow">MY PAGE</h1>
+                <p className="text-lg text-slate-400">
+                  Welcome back, <span className="text-cyan-400">{user?.name || "Guest"}</span>
                 </p>
               </div>
             </div>
@@ -228,16 +240,16 @@ export default function MyPage() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-14 bg-white shadow-sm">
-              <TabsTrigger value="videos" className="text-base data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+            <TabsList className="grid w-full grid-cols-3 h-14 bg-[#0f172a] border border-white/10">
+              <TabsTrigger value="videos" className="text-base data-[state=active]:bg-cyan-950 data-[state=active]:text-cyan-400 data-[state=active]:border-b-2 data-[state=active]:border-cyan-500">
                 <Film className="h-5 w-5 mr-2" />
                 動画
               </TabsTrigger>
-              <TabsTrigger value="reservations" className="text-base data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+              <TabsTrigger value="reservations" className="text-base data-[state=active]:bg-purple-950 data-[state=active]:text-purple-400 data-[state=active]:border-b-2 data-[state=active]:border-purple-500">
                 <Calendar className="h-5 w-5 mr-2" />
                 予約管理
               </TabsTrigger>
-              <TabsTrigger value="payments" className="text-base data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600">
+              <TabsTrigger value="payments" className="text-base data-[state=active]:bg-emerald-950 data-[state=active]:text-emerald-400 data-[state=active]:border-b-2 data-[state=active]:border-emerald-500">
                 <CreditCard className="h-5 w-5 mr-2" />
                 決済履歴
               </TabsTrigger>
@@ -247,64 +259,64 @@ export default function MyPage() {
             <TabsContent value="videos" className="mt-8">
               {videosLoading ? (
                 <div className="flex flex-col items-center justify-center py-20">
-                  <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
-                  <p className="text-slate-600">動画を読み込んでいます...</p>
+                  <Loader2 className="h-12 w-12 animate-spin text-cyan-600 mb-4" />
+                  <p className="text-slate-500">Loading videos...</p>
                 </div>
               ) : videos && videos.length > 0 ? (
                 <div className="grid md:grid-cols-2 gap-6">
                   {videos.map((video) => (
-                    <Card key={video.id} className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-blue-200">
+                    <Card key={video.id} className="bg-[#0f172a] border border-white/10 hover:border-cyan-500/50 transition-all duration-300 glass-panel">
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
-                              <Film className="h-6 w-6 text-white" />
+                            <div className="w-12 h-12 rounded-lg bg-cyan-950 border border-cyan-500/30 flex items-center justify-center">
+                              <Film className="h-6 w-6 text-cyan-400" />
                             </div>
                             <div>
-                              <h3 className="text-lg font-bold text-slate-900">動画 #{video.id}</h3>
+                              <h3 className="text-lg font-bold text-white">Video #{video.id}</h3>
                               <p className="text-sm text-slate-500">{formatDate(video.createdAt)}</p>
                             </div>
                           </div>
                           {getStatusBadge(video.status, "video")}
                         </div>
-                        
-                        <div className="space-y-2 mb-6 p-4 bg-slate-50 rounded-lg">
+
+                        <div className="space-y-2 mb-6 p-4 bg-black/40 rounded-lg border border-white/5">
                           <div className="flex items-center gap-2 text-sm">
                             <Clock className="h-4 w-4 text-slate-500" />
-                            <span className="text-slate-600">時間:</span>
-                            <span className="font-semibold text-slate-900">{video.duration}秒</span>
+                            <span className="text-slate-400">Duration:</span>
+                            <span className="font-semibold text-slate-200">{video.duration}s</span>
                           </div>
                         </div>
-                        
+
                         <div className="space-y-2">
                           {video.status === "processing" && (
-                            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="p-4 bg-blue-950/30 border border-blue-500/30 rounded-lg">
                               <div className="flex items-center gap-2 mb-2">
-                                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                                <span className="text-sm font-semibold text-blue-900">動画を生成中...</span>
+                                <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                                <span className="text-sm font-semibold text-blue-300">Processing...</span>
                               </div>
-                              <p className="text-xs text-blue-700">
-                                Shotstack APIでテンプレートを結合しています。完了まで数分かかる場合があります。
+                              <p className="text-xs text-blue-400/80">
+                                Generating your unique projection video. This may take a few minutes.
                               </p>
                             </div>
                           )}
                           {video.status === "failed" && (
-                            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <div className="p-4 bg-red-950/30 border border-red-500/30 rounded-lg">
                               <div className="flex items-center gap-2 mb-2">
-                                <XCircle className="h-4 w-4 text-red-600" />
-                                <span className="text-sm font-semibold text-red-900">動画生成に失敗しました</span>
+                                <XCircle className="h-4 w-4 text-red-500" />
+                                <span className="text-sm font-semibold text-red-300">Generation Failed</span>
                               </div>
-                              <p className="text-xs text-red-700">
-                                再度お試しいただくか、サポートにお問い合わせください。
+                              <p className="text-xs text-red-400/80">
+                                Please try again or contact support.
                               </p>
                             </div>
                           )}
                           <div className="flex gap-2">
                             {video.status === "completed" && video.videoUrl && (
-                              <Button asChild size="sm" variant="outline" className="flex-1">
+                              <Button asChild size="sm" variant="outline" className="flex-1 border-slate-700 hover:bg-slate-800 text-slate-300">
                                 <a href={video.videoUrl} target="_blank" rel="noopener noreferrer">
                                   <Download className="h-4 w-4 mr-2" />
-                                  ダウンロード
+                                  Download
                                 </a>
                               </Button>
                             )}
@@ -313,10 +325,10 @@ export default function MyPage() {
                               variant="destructive"
                               onClick={() => deleteVideoMutation.mutate({ id: video.id })}
                               disabled={deleteVideoMutation.isPending || video.status === "processing"}
-                              className="flex-1"
+                              className="flex-1 bg-red-900/50 hover:bg-red-900 text-red-200 border border-red-800"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
-                              削除
+                              Delete
                             </Button>
                           </div>
                           {video.status === "completed" && (
@@ -324,10 +336,10 @@ export default function MyPage() {
                               size="sm"
                               onClick={() => handleReserveVideo(video.id)}
                               disabled={createCheckoutMutation.isPending}
-                              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)] border-none"
                             >
                               <Calendar className="h-4 w-4 mr-2" />
-                              {createCheckoutMutation.isPending ? '処理中...' : '投影予約（5,000円）'}
+                              {createCheckoutMutation.isPending ? 'Processing...' : 'Book Projection (¥5,000)'}
                             </Button>
                           )}
                         </div>
@@ -336,16 +348,16 @@ export default function MyPage() {
                   ))}
                 </div>
               ) : (
-                <Card className="border-2 border-dashed border-slate-300">
+                <Card className="bg-[#0f172a] border border-white/10 border-dashed">
                   <CardContent className="py-16 text-center">
-                    <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                      <Film className="h-10 w-10 text-slate-400" />
+                    <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                      <Film className="h-10 w-10 text-slate-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">まだ動画がありません</h3>
-                    <p className="text-slate-600 mb-6">テンプレートを選んで最初の動画を作成しましょう</p>
-                    <Button onClick={() => setLocation("/create")} size="lg">
+                    <h3 className="text-xl font-bold text-slate-200 mb-2">No videos yet</h3>
+                    <p className="text-slate-500 mb-6">Create your first projection video now.</p>
+                    <Button onClick={() => setLocation("/create")} size="lg" className="bg-cyan-600 hover:bg-cyan-500 text-white neon-button">
                       <Film className="h-5 w-5 mr-2" />
-                      動画を作成
+                      Create Video
                     </Button>
                   </CardContent>
                 </Card>
@@ -356,36 +368,36 @@ export default function MyPage() {
             <TabsContent value="reservations" className="mt-8">
               {reservationsLoading ? (
                 <div className="flex flex-col items-center justify-center py-20">
-                  <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
-                  <p className="text-slate-600">予約情報を読み込んでいます...</p>
+                  <Loader2 className="h-12 w-12 animate-spin text-purple-600 mb-4" />
+                  <p className="text-slate-500">Loading reservations...</p>
                 </div>
               ) : reservations && reservations.length > 0 ? (
                 <div className="grid md:grid-cols-2 gap-6">
                   {reservations.map((reservation) => {
                     const video = videos?.find(v => v.id === reservation.videoId);
                     return (
-                      <Card key={reservation.id} className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-blue-200">
+                      <Card key={reservation.id} className="bg-[#0f172a] border border-white/10 hover:border-purple-500/50 transition-all duration-300 glass-panel">
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                                <Calendar className="h-6 w-6 text-white" />
+                              <div className="w-12 h-12 rounded-lg bg-purple-900 border border-purple-500/30 flex items-center justify-center">
+                                <Calendar className="h-6 w-6 text-purple-400" />
                               </div>
                               <div>
-                                <h3 className="text-lg font-bold text-slate-900">予約 #{reservation.id}</h3>
-                                <p className="text-sm text-slate-500">予約日: {formatDate(reservation.createdAt)}</p>
+                                <h3 className="text-lg font-bold text-white">Reservation #{reservation.id}</h3>
+                                <p className="text-sm text-slate-500">Date: {formatDate(reservation.createdAt)}</p>
                               </div>
                             </div>
                             {getStatusBadge(reservation.status, "reservation")}
                           </div>
-                          
-                          <div className="space-y-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg mb-4">
+
+                          <div className="space-y-3 p-4 bg-[#1e293b]/50 rounded-lg mb-4 border border-white/5">
                             <div className="flex items-center justify-between">
-                              <span className="text-slate-600 flex items-center gap-2">
+                              <span className="text-slate-400 flex items-center gap-2">
                                 <Calendar className="h-4 w-4" />
-                                投影日:
+                                Projection Date:
                               </span>
-                              <span className="font-semibold text-slate-900">
+                              <span className="font-semibold text-white">
                                 {new Date(reservation.projectionDate).toLocaleDateString("ja-JP", {
                                   year: "numeric",
                                   month: "long",
@@ -394,21 +406,21 @@ export default function MyPage() {
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-slate-600 flex items-center gap-2">
+                              <span className="text-slate-400 flex items-center gap-2">
                                 <Clock className="h-4 w-4" />
-                                投影時間:
+                                Time Slot:
                               </span>
-                              <span className="font-semibold text-slate-900">
+                              <span className="font-semibold text-white">
                                 {getSlotTime(reservation.slotNumber)}
                               </span>
                             </div>
                             {video && (
                               <div className="flex items-center justify-between">
-                                <span className="text-slate-600 flex items-center gap-2">
+                                <span className="text-slate-400 flex items-center gap-2">
                                   <Film className="h-4 w-4" />
-                                  動画ID:
+                                  Video ID:
                                 </span>
-                                <span className="font-semibold text-slate-900">#{video.id}</span>
+                                <span className="font-semibold text-white">#{video.id}</span>
                               </div>
                             )}
                           </div>
@@ -419,32 +431,32 @@ export default function MyPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleEditReservation(reservation.id, reservation.projectionDate, reservation.slotNumber)}
-                                className="flex-1 border-blue-200 text-blue-600 hover:bg-blue-50"
+                                className="flex-1 border-purple-500/30 text-purple-400 hover:bg-purple-900/20 hover:text-purple-300"
                               >
                                 <Edit className="h-4 w-4 mr-2" />
-                                変更
+                                Modify
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  if (confirm("本当にこの予約をキャンセルしますか？")) {
+                                  if (confirm("Are you sure you want to cancel this reservation?")) {
                                     cancelReservationMutation.mutate({ id: reservation.id });
                                   }
                                 }}
                                 disabled={cancelReservationMutation.isPending}
-                                className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                                className="flex-1 border-red-500/30 text-red-400 hover:bg-red-900/20 hover:text-red-300"
                               >
                                 <XCircle className="h-4 w-4 mr-2" />
-                                キャンセル
+                                Cancel
                               </Button>
                             </div>
                           )}
-                          
+
                           {reservation.status === "confirmed" && !canModifyReservation(reservation.projectionDate) && (
-                            <div className="text-sm text-slate-500 text-center p-3 bg-slate-100 rounded-lg">
+                            <div className="text-sm text-slate-400 text-center p-3 bg-white/5 rounded-lg border border-white/5">
                               <AlertCircle className="h-4 w-4 inline mr-1" />
-                              投影日の1日前を過ぎたため、変更・キャンセルはできません
+                              Cannot modify or cancel within 24 hours of projection.
                             </div>
                           )}
                         </CardContent>
@@ -453,16 +465,16 @@ export default function MyPage() {
                   })}
                 </div>
               ) : (
-                <Card className="border-2 border-dashed border-slate-300">
+                <Card className="bg-[#0f172a] border border-white/10 border-dashed">
                   <CardContent className="py-16 text-center">
-                    <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                      <Calendar className="h-10 w-10 text-slate-400" />
+                    <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                      <Calendar className="h-10 w-10 text-slate-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">まだ予約がありません</h3>
-                    <p className="text-slate-600 mb-6">動画を作成して投影予約をしましょう</p>
-                    <Button onClick={() => setLocation("/create")} size="lg">
+                    <h3 className="text-xl font-bold text-slate-200 mb-2">No reservations</h3>
+                    <p className="text-slate-500 mb-6">Create a video and book a projection slot.</p>
+                    <Button onClick={() => setLocation("/create")} size="lg" className="bg-purple-600 hover:bg-purple-500 text-white neon-button">
                       <Film className="h-5 w-5 mr-2" />
-                      動画を作成
+                      Create Video
                     </Button>
                   </CardContent>
                 </Card>
@@ -473,31 +485,31 @@ export default function MyPage() {
             <TabsContent value="payments" className="mt-8">
               {paymentsLoading ? (
                 <div className="flex flex-col items-center justify-center py-20">
-                  <Loader2 className="h-12 w-12 animate-spin text-blue-600 mb-4" />
-                  <p className="text-slate-600">決済履歴を読み込んでいます...</p>
+                  <Loader2 className="h-12 w-12 animate-spin text-emerald-600 mb-4" />
+                  <p className="text-slate-500">Loading payments...</p>
                 </div>
               ) : payments && payments.length > 0 ? (
                 <div className="grid md:grid-cols-2 gap-6">
                   {payments.map((payment) => (
-                    <Card key={payment.id} className="hover:shadow-xl transition-shadow duration-300 border-2 border-transparent hover:border-blue-200">
+                    <Card key={payment.id} className="bg-[#0f172a] border border-white/10 hover:border-emerald-500/50 transition-all duration-300 glass-panel">
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                              <CreditCard className="h-6 w-6 text-white" />
+                            <div className="w-12 h-12 rounded-lg bg-emerald-900 border border-emerald-500/30 flex items-center justify-center">
+                              <CreditCard className="h-6 w-6 text-emerald-400" />
                             </div>
                             <div>
-                              <h3 className="text-lg font-bold text-slate-900">決済 #{payment.id}</h3>
+                              <h3 className="text-lg font-bold text-white">Payment #{payment.id}</h3>
                               <p className="text-sm text-slate-500">{formatDate(payment.createdAt)}</p>
                             </div>
                           </div>
                           {getStatusBadge(payment.status, "payment")}
                         </div>
-                        
-                        <div className="space-y-2 p-4 bg-slate-50 rounded-lg">
+
+                        <div className="space-y-2 p-4 bg-[#1e293b]/50 rounded-lg border border-white/5">
                           <div className="flex items-center justify-between">
-                            <span className="text-slate-600">金額:</span>
-                            <span className="text-2xl font-bold text-slate-900">¥{payment.amount.toLocaleString()}</span>
+                            <span className="text-slate-400">Amount:</span>
+                            <span className="text-2xl font-bold text-white">¥{payment.amount.toLocaleString()}</span>
                           </div>
                         </div>
                       </CardContent>
@@ -505,13 +517,13 @@ export default function MyPage() {
                   ))}
                 </div>
               ) : (
-                <Card className="border-2 border-dashed border-slate-300">
+                <Card className="bg-[#0f172a] border border-white/10 border-dashed">
                   <CardContent className="py-16 text-center">
-                    <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                      <CreditCard className="h-10 w-10 text-slate-400" />
+                    <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
+                      <CreditCard className="h-10 w-10 text-slate-500" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">決済履歴がありません</h3>
-                    <p className="text-slate-600">有料サービスを利用すると、ここに決済履歴が表示されます</p>
+                    <h3 className="text-xl font-bold text-slate-200 mb-2">No payment history</h3>
+                    <p className="text-slate-500">History will appear here after you use paid services.</p>
                   </CardContent>
                 </Card>
               )}
@@ -519,7 +531,7 @@ export default function MyPage() {
           </Tabs>
         </div>
       </main>
-      
+
       {/* Edit Reservation Dialog */}
       <Dialog open={editingReservation !== null} onOpenChange={(open) => !open && setEditingReservation(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -529,7 +541,7 @@ export default function MyPage() {
               新しい投影日時を選択してください。投影日の1日前まで変更可能です。
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-6 py-4">
             {/* Date Selection */}
             <div>
@@ -562,7 +574,7 @@ export default function MyPage() {
                 })}
               </div>
             </div>
-            
+
             {/* Time Slot Selection */}
             {editDate && (
               <div>
@@ -602,7 +614,7 @@ export default function MyPage() {
                 )}
               </div>
             )}
-            
+
             {/* Action Buttons */}
             <div className="flex gap-3 pt-4">
               <Button

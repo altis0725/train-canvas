@@ -26,9 +26,9 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/20 backdrop-blur-md">
-      <div className="container flex h-16 items-center justify-center">
-        <Link href="/" className="flex items-center gap-2 font-bold text-2xl text-white hover:text-blue-300 transition-colors" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+    <header className="fixed top-0 z-50 w-full glass-panel border-b-0 rounded-none">
+      <div className="container flex h-16 items-center justify-between">
+        <Link href="/" className="flex items-center gap-2 font-bold text-2xl text-white hover:text-cyan-400 transition-colors text-glow">
           <span>{APP_TITLE}</span>
         </Link>
 
@@ -36,35 +36,35 @@ export default function Header() {
         <nav className="flex items-center gap-6">
           {isAuthenticated ? (
             <>
-              <Link href="/create" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              <Link href="/create" className="text-sm font-medium text-slate-300 hover:text-cyan-400 transition-colors tracking-wide">
                 動画作成
               </Link>
-              <Link href="/mypage" className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+              <Link href="/mypage" className="text-sm font-medium text-slate-300 hover:text-cyan-400 transition-colors tracking-wide">
                 マイページ
               </Link>
               {user?.role === "admin" && (
-                <Link href="/admin" className="text-sm font-medium text-accent hover:text-accent/80 transition-colors">
+                <Link href="/admin" className="text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors tracking-wide">
                   管理画面
                 </Link>
               )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
+                  <Button variant="ghost" size="icon" className="rounded-full text-slate-300 hover:text-cyan-400 hover:bg-white/5">
                     <User className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56 bg-[#0f172a] border-white/10 text-slate-200">
                   <DropdownMenuLabel>
                     <div className="flex flex-col gap-1">
                       <p className="text-sm font-medium">{user?.name || "ユーザー"}</p>
                       {user?.email && (
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                        <p className="text-xs text-slate-400">{user.email}</p>
                       )}
                     </div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-400 focus:text-red-300 focus:bg-white/5 cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     ログアウト
                   </DropdownMenuItem>
@@ -72,7 +72,7 @@ export default function Header() {
               </DropdownMenu>
             </>
           ) : (
-            <Button asChild>
+            <Button asChild className="neon-button bg-cyan-600 hover:bg-cyan-500 text-white border-none shadow-[0_0_15px_rgba(6,182,212,0.5)]">
               <a href={getLoginUrl()}>ログイン</a>
             </Button>
           )}

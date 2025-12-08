@@ -50,28 +50,42 @@
 }
 
 :root {
-  /* Default to Dark/Cyber Theme */
-  --background: #050a14;
-  /* Deep Space Blue */
+  /* Futuristic Night Theme */
+  --background: #020617;
+  /* Deep Night Blue/Black */
   --foreground: #f8fafc;
+  /* Crisp White */
+
   --card: #0f172a;
+  /* Dark Slate */
   --card-foreground: #f8fafc;
+
   --popover: #0f172a;
   --popover-foreground: #f8fafc;
-  --primary: #3b82f6;
-  /* Blue 500 */
-  --primary-foreground: #ffffff;
-  --secondary: #1e293b;
-  --secondary-foreground: #f8fafc;
+
+  --primary: #06b6d4;
+  /* Neon Cyan */
+  --primary-foreground: #000000;
+
+  --secondary: #8b5cf6;
+  /* Neon Purple */
+  --secondary-foreground: #ffffff;
+
   --muted: #1e293b;
   --muted-foreground: #94a3b8;
+
   --accent: #1e293b;
-  --accent-foreground: #f8fafc;
+  --accent-foreground: #06b6d4;
+  /* Cyan accent on hover */
+
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
+
   --border: #1e293b;
   --input: #1e293b;
-  --ring: #3b82f6;
+  --ring: #06b6d4;
+  /* Cyan Ring */
+
   --radius: 0.5rem;
 
   --sidebar: #0f172a;
@@ -79,11 +93,8 @@
   --sidebar-accent: #1e293b;
   --sidebar-accent-foreground: #f8fafc;
   --sidebar-border: #1e293b;
-  --sidebar-ring: #3b82f6;
+  --sidebar-ring: #06b6d4;
 }
-
-/* Force dark mode styles regardless of system preference if needed, 
-   but usually :root above handles it if we don't have a light mode toggle anymore. */
 
 @layer base {
   * {
@@ -101,7 +112,7 @@
   h4,
   h5,
   h6 {
-    @apply font-bold;
+    @apply font-bold font-orbitron tracking-wider;
   }
 }
 
@@ -129,17 +140,38 @@
     }
   }
 
-  /* Utilities for the Cyber Look */
+  /* Cyber/Neon Utilities */
   .text-glow {
-    text-shadow: 0 0 10px rgba(59, 130, 246, 0.7), 0 0 20px rgba(59, 130, 246, 0.5);
+    text-shadow: 0 0 10px rgba(6, 182, 212, 0.7), 0 0 20px rgba(6, 182, 212, 0.5);
+  }
+
+  .text-glow-purple {
+    text-shadow: 0 0 10px rgba(139, 92, 246, 0.7), 0 0 20px rgba(139, 92, 246, 0.5);
   }
 
   .box-glow {
-    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.3), inset 0 0 10px rgba(6, 182, 212, 0.1);
+  }
+
+  .border-glow {
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
   }
 
   .glass-panel {
-    @apply bg-black/40 backdrop-blur-md border border-white/10;
+    @apply bg-black/60 backdrop-blur-md border border-white/10 shadow-xl;
+  }
+
+  .neon-button {
+    @apply relative overflow-hidden transition-all duration-300;
+  }
+
+  .neon-button::after {
+    content: '';
+    @apply absolute inset-0 bg-white/20 translate-x-[-100%] transition-transform duration-300 skew-x-[-15deg];
+  }
+
+  .neon-button:hover::after {
+    @apply translate-x-[100%];
   }
 }
 
@@ -164,16 +196,64 @@
 
   0%,
   100% {
-    opacity: 0.5;
+    opacity: 0.6;
     transform: scale(1);
+    filter: brightness(1);
   }
 
   50% {
     opacity: 1;
-    transform: scale(1.05);
+    transform: scale(1.02);
+    filter: brightness(1.2);
   }
 }
 
 .animate-pulse-glow {
   animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+@keyframes cyber-scan {
+  0% {
+    top: -10%;
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 0.5;
+  }
+
+  80% {
+    opacity: 0.5;
+  }
+
+  100% {
+    top: 110%;
+    opacity: 0;
+  }
+}
+
+.cyber-scan-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  background: linear-gradient(to bottom, transparent, rgba(6, 182, 212, 0.5), transparent);
+  animation: cyber-scan 3s linear infinite;
+  pointer-events: none;
 }

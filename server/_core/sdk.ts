@@ -260,6 +260,7 @@ class SDKServer {
     // Regular authentication flow
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
+
     const session = await this.verifySession(sessionCookie);
 
     if (!session) {
@@ -286,6 +287,8 @@ class SDKServer {
         console.error("[Auth] Failed to sync user from OAuth:", error);
         throw ForbiddenError("Failed to sync user info");
       }
+    } else {
+      console.log("[Auth] User found:", user.id);
     }
 
     if (!user) {
