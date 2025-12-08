@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO templates (category, title, description, videoUrl, videoKey, thumbnailUrl, duration, displayOrder, isActive) \nSELECT 2, title, description, videoUrl, videoKey, thumbnailUrl, duration, displayOrder, isActive FROM templates WHERE id = 210006\nUNION ALL\nSELECT 3, title, description, videoUrl, videoKey, thumbnailUrl, duration, displayOrder, isActive FROM templates WHERE id = 210006",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user prqhUaVbKAhMgtA.root --database JsN6nUxqbqsULnzWGqnwsZ --execute INSERT INTO templates (category, title, description, videoUrl, videoKey, thumbnailUrl, duration, displayOrder, isActive) \nSELECT 2, title, description, videoUrl, videoKey, thumbnailUrl, duration, displayOrder, isActive FROM templates WHERE id = 210006\nUNION ALL\nSELECT 3, title, description, videoUrl, videoKey, thumbnailUrl, duration, displayOrder, isActive FROM templates WHERE id = 210006",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1609
+}

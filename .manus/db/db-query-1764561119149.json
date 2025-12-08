@@ -1,0 +1,55 @@
+{
+  "query": "SELECT id, category, title FROM templates ORDER BY category, id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user prqhUaVbKAhMgtA.root --database JsN6nUxqbqsULnzWGqnwsZ --execute SELECT id, category, title FROM templates ORDER BY category, id",
+  "rows": [
+    {
+      "id": "210006",
+      "category": "1",
+      "title": "うずめさん"
+    },
+    {
+      "id": "240008",
+      "category": "1",
+      "title": "リン様"
+    },
+    {
+      "id": "240011",
+      "category": "1",
+      "title": "テンちゃん"
+    },
+    {
+      "id": "210007",
+      "category": "2",
+      "title": "リン様"
+    },
+    {
+      "id": "240007",
+      "category": "2",
+      "title": "うずめさん"
+    },
+    {
+      "id": "240010",
+      "category": "2",
+      "title": "テンちゃん"
+    },
+    {
+      "id": "210008",
+      "category": "3",
+      "title": "テンちゃん"
+    },
+    {
+      "id": "240006",
+      "category": "3",
+      "title": "うずめさん"
+    },
+    {
+      "id": "240009",
+      "category": "3",
+      "title": "リン様"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcategory\ttitle\n210006\t1\tうずめさん\n240008\t1\tリン様\n240011\t1\tテンちゃん\n210007\t2\tリン様\n240007\t2\tうずめさん\n240010\t2\tテンちゃん\n210008\t3\tテンちゃん\n240006\t3\tうずめさん\n240009\t3\tリン様\n",
+  "stderr": "",
+  "execution_time_ms": 1672
+}
