@@ -1,9 +1,26 @@
 import "dotenv/config";
+import crypto from "crypto";
+
+// Polyfill crypto.hash for Node.js < 21.7.0
+if (!crypto.hash) {
+  // @ts-ignore - assigning to read-only property or missing type definition
+  crypto.hash = (algorithm: string, data: crypto.BinaryLike, outputEncoding?: crypto.BinaryToTextEncoding) => {
+    const hash = crypto.createHash(algorithm);
+    hash.update(data);
+    if (outputEncoding) {
+      return hash.digest(outputEncoding);
+    }
+    return hash.digest();
+  };
+}
+
 import express from "express";
+import cookieParser from "cookie-parser";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
+import { registerLineAuthRoutes } from "./lineAuthRoutes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -30,7 +47,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  
+
   // Stripe webhook endpoint (MUST be before express.json())
   app.post(
     "/api/stripe/webhook",
@@ -40,12 +57,18 @@ async function startServer() {
       await handleStripeWebhook(req, res);
     }
   );
-  
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  app.use(cookieParser());
+
   // OAuth callback under /api/oauth/callback
-  registerOAuthRoutes(app);
+  // registerOAuthRoutes(app);
+
+  // LINE Auth
+  registerLineAuthRoutes(app);
+
   // tRPC API
   app.use(
     "/api/trpc",
