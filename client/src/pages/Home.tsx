@@ -23,7 +23,7 @@ export default function Home() {
       {/* Hero Background */}
       <div className="fixed inset-0 z-0">
         <img
-          src="/src/assets/night_train.png"
+          src="/img/night_train.png"
           alt="Night Train Projection"
           className="w-full h-full object-cover opacity-60"
         />
