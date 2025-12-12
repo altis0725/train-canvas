@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import Stripe from "stripe";
-import { createPayment, updatePaymentStatus } from "./db";
+import { createPayment, getPaymentByStripeIntentId, updatePaymentStatus, getReservationById, updateReservationStatus } from "./db";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2025-10-29.clover",
@@ -47,28 +47,57 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         const userId = session.metadata?.user_id
           ? parseInt(session.metadata.user_id)
           : null;
+        const reservationId = session.metadata?.reservation_id
+          ? parseInt(session.metadata.reservation_id)
+          : null;
         const customerEmail = session.metadata?.customer_email || session.customer_email;
+        const paymentIntentId = session.payment_intent as string;
 
-        if (!userId) {
-          console.error("[Webhook] Missing user_id in session metadata");
+        if (!userId || !paymentIntentId) {
+          console.error("[Webhook] Missing user_id or payment_intent in session metadata");
           break;
         }
 
-        // Create payment record
-        const paymentId = await createPayment({
-          userId,
-          amount: session.amount_total ? session.amount_total / 100 : 0, // Convert from cents
-          currency: session.currency?.toUpperCase() || "JPY",
-          paymentMethod: "stripe",
-          stripePaymentIntentId: session.payment_intent as string,
-          status: "succeeded",
-          metadata: JSON.stringify({
-            sessionId: session.id,
-            customerEmail,
-          }),
-        });
+        // Idempotent payment upsert
+        const existing = await getPaymentByStripeIntentId(paymentIntentId);
+        let paymentId: number;
+        if (existing) {
+          paymentId = existing.id;
+          await updatePaymentStatus(paymentIntentId, "succeeded");
+        } else {
+          paymentId = await createPayment({
+            userId,
+            amount: session.amount_total ? session.amount_total / 100 : 0, // Convert from cents
+            currency: session.currency?.toUpperCase() || "JPY",
+            paymentMethod: "stripe",
+            stripePaymentIntentId: paymentIntentId,
+            status: "succeeded",
+            metadata: JSON.stringify({
+              sessionId: session.id,
+              customerEmail,
+            }),
+          });
+        }
 
-        console.log(`[Webhook] Payment record created: ${paymentId}`);
+        // Confirm reservation if still active
+        if (reservationId) {
+          const reservation = await getReservationById(reservationId);
+          if (reservation && reservation.status !== "cancelled" && reservation.status !== "expired") {
+            const holdExpired =
+              reservation.status === "pending_payment" &&
+              reservation.holdExpiresAt &&
+              reservation.holdExpiresAt < new Date();
+
+            if (!holdExpired) {
+              await updateReservationStatus(reservationId, "confirmed", undefined, paymentId);
+            } else {
+              await updateReservationStatus(reservationId, "expired", undefined, paymentId);
+              console.warn(`[Webhook] Reservation ${reservationId} hold expired before payment confirmation`);
+            }
+          }
+        }
+
+        console.log(`[Webhook] Payment processed for intent: ${paymentIntentId}`);
         break;
       }
 

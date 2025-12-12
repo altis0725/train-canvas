@@ -28,8 +28,8 @@ export default function Header() {
   return (
     <header className="fixed top-0 z-50 w-full glass-panel border-b-0 rounded-none">
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-bold text-2xl text-white hover:text-cyan-400 transition-colors text-glow">
-          <span>{APP_TITLE}</span>
+        <Link href="/" className="text-xl md:text-2xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 font-orbitron hover:opacity-80 transition-opacity">
+          WRAPPING THE TRAIN
         </Link>
 
 

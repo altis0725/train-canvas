@@ -1,10 +1,17 @@
-import { pgTable, serial, text, varchar, timestamp, pgEnum, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, varchar, timestamp, pgEnum, integer, uniqueIndex } from "drizzle-orm/pg-core";
 
 // Define Enums
 export const roleEnum = pgEnum("role", ["user", "admin"]);
 export const videoTypeEnum = pgEnum("videoType", ["free", "paid"]);
 export const videoStatusEnum = pgEnum("status", ["pending", "processing", "completed", "failed"]);
-export const reservationStatusEnum = pgEnum("reservationStatus", ["pending", "confirmed", "cancelled", "completed"]);
+export const reservationStatusEnum = pgEnum("reservationStatus", [
+  "pending",
+  "pending_payment",
+  "confirmed",
+  "cancelled",
+  "completed",
+  "expired",
+]);
 export const paymentMethodEnum = pgEnum("paymentMethod", ["stripe", "qr"]);
 export const paymentStatusEnum = pgEnum("paymentStatus", ["pending", "succeeded", "failed", "refunded"]);
 export const projectionStatusEnum = pgEnum("projectionStatus", ["scheduled", "in_progress", "completed", "failed"]);
@@ -73,19 +80,29 @@ export type InsertVideo = typeof videos.$inferInsert;
 /**
  * Projection reservations
  */
-export const reservations = pgTable("reservations", {
-  id: serial("id").primaryKey(),
-  userId: integer("userId").notNull(),
-  videoId: integer("videoId").notNull(),
-  paymentId: integer("paymentId"),
-  projectionDate: timestamp("projectionDate").notNull(),
-  slotNumber: integer("slotNumber").notNull(),
-  status: reservationStatusEnum("status").notNull().default("pending"),
-  cancellationReason: text("cancellationReason"),
-  cancelledAt: timestamp("cancelledAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
-});
+export const reservations = pgTable(
+  "reservations",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("userId").notNull(),
+    videoId: integer("videoId").notNull(),
+    paymentId: integer("paymentId"),
+    projectionDate: timestamp("projectionDate").notNull(),
+    slotNumber: integer("slotNumber").notNull(),
+    status: reservationStatusEnum("status").notNull().default("pending_payment"),
+    holdExpiresAt: timestamp("holdExpiresAt"),
+    cancellationReason: text("cancellationReason"),
+    cancelledAt: timestamp("cancelledAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+  },
+  (table) => ({
+    projectionSlotIdx: uniqueIndex("reservations_projection_slot_idx").on(
+      table.projectionDate,
+      table.slotNumber,
+    ),
+  })
+);
 
 export type Reservation = typeof reservations.$inferSelect;
 export type InsertReservation = typeof reservations.$inferInsert;

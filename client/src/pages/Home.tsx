@@ -23,7 +23,7 @@ export default function Home() {
       {/* Hero Background */}
       <div className="fixed inset-0 z-0">
         <img
-          src="/img/hero-train.png"
+          src="/src/assets/night_train.png"
           alt="Night Train Projection"
           className="w-full h-full object-cover opacity-60"
         />
@@ -50,7 +50,7 @@ export default function Home() {
               variants={itemVariants}
               className="text-5xl md:text-7xl lg:text-9xl font-bold tracking-tighter mb-6 text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-slate-300 text-glow"
             >
-              NIGHT TRAIN<br />CANVAS
+              WRAPPING<br />THE TRAIN
             </motion.h1>
 
             <motion.p
@@ -238,21 +238,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* FOOTER */}
-        <footer className="w-full border-t border-white/10 bg-[#020617] pt-16 pb-8">
-          <div className="container text-center">
-            <h2 className="text-2xl font-bold mb-8 text-white tracking-widest" style={{ fontFamily: 'Orbitron' }}>NIGHT TRAIN CANVAS</h2>
-            <div className="flex justify-center gap-8 mb-8 text-slate-400 text-sm">
-              <a href="#" className="hover:text-cyan-400 transition-colors">利用規約</a>
-              <a href="#" className="hover:text-cyan-400 transition-colors">プライバシーポリシー</a>
-              <a href="#" className="hover:text-cyan-400 transition-colors">特定商取引法に基づく表記</a>
-              <a href="#" className="hover:text-cyan-400 transition-colors">お問い合わせ</a>
-            </div>
-            <p className="text-slate-600 text-xs text-center">
-              © 2024 Mizuma Railway Projection Project. All rights reserved.
-            </p>
-          </div>
-        </footer>
+
       </main>
     </div>
   );

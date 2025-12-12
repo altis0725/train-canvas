@@ -274,16 +274,36 @@ export async function getReservationsByDateRange(startDate: Date, endDate: Date)
       and(
         gte(reservations.projectionDate, startDate),
         lte(reservations.projectionDate, endDate),
-        sql`${reservations.status} != 'cancelled'`
+        sql`${reservations.status} != 'cancelled'`,
+        sql`${reservations.status} != 'expired'`,
       )
     )
     .orderBy(reservations.projectionDate, reservations.slotNumber);
 }
 
 /**
+ * Reservations that block a slot (confirmed or active holds).
+ * Expired holds and cancelled/expired reservations are ignored.
+ */
+export async function getBlockingReservationsByDateRange(startDate: Date, endDate: Date) {
+  const existing = await getReservationsByDateRange(startDate, endDate);
+  const now = new Date();
+  return existing.filter((r) => {
+    if (r.status === "cancelled" || r.status === "expired") return false;
+    if (r.status === "pending_payment" && r.holdExpiresAt && r.holdExpiresAt < now) {
+      return false;
+    }
+    return true;
+  });
+}
+
+/**
  * Update reservation data
  */
-export async function updateReservationData(id: number, data: { projectionDate?: Date; slotNumber?: number }) {
+export async function updateReservationData(
+  id: number,
+  data: { projectionDate?: Date; slotNumber?: number; status?: InsertReservation["status"]; holdExpiresAt?: Date }
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -293,7 +313,12 @@ export async function updateReservationData(id: number, data: { projectionDate?:
 /**
  * Update reservation status
  */
-export async function updateReservationStatus(id: number, status: "pending" | "confirmed" | "cancelled" | "completed", cancellationReason?: string) {
+export async function updateReservationStatus(
+  id: number,
+  status: "pending" | "pending_payment" | "confirmed" | "cancelled" | "completed" | "expired",
+  cancellationReason?: string,
+  paymentId?: number
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -301,6 +326,9 @@ export async function updateReservationStatus(id: number, status: "pending" | "c
   if (status === "cancelled") {
     updateData.cancelledAt = new Date();
     if (cancellationReason) updateData.cancellationReason = cancellationReason;
+  }
+  if (paymentId !== undefined) {
+    updateData.paymentId = paymentId;
   }
 
   await db.update(reservations).set(updateData).where(eq(reservations.id, id));

@@ -27,11 +27,14 @@ import {
   createProjectionSchedule,
   updateProjectionScheduleStatus,
   getDb,
+  getBlockingReservationsByDateRange,
+
 } from "./db";
 import { templates, users, reservations, payments, videos } from "../drizzle/schema";
+import { ENV } from "./_core/env";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
+  // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -59,6 +62,10 @@ export const appRouter = router({
           apiVersion: "2025-10-29.clover",
         });
 
+        if (!ENV.appBaseUrl) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "APP_BASE_URL is not configured" });
+        }
+
         const { PRODUCTS } = await import("./products");
 
         // Create checkout session
@@ -78,8 +85,8 @@ export const appRouter = router({
             },
           ],
           mode: "payment",
-          success_url: `${ctx.req.headers.origin}/reservations?payment=success${input.videoId ? `&videoId=${input.videoId}` : ''}`,
-          cancel_url: `${ctx.req.headers.origin}/mypage?payment=cancelled`,
+          success_url: `${ENV.appBaseUrl}/reservations?payment=success${input.videoId ? `&videoId=${input.videoId}` : ""}`,
+          cancel_url: `${ENV.appBaseUrl}/mypage?payment=cancelled`,
           client_reference_id: ctx.user.id.toString(),
           customer_email: ctx.user.email || undefined,
           metadata: {
@@ -124,12 +131,40 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        // Normalize projection date to day start for uniqueness
+        const projectionDate = new Date(input.projectionDate);
+        projectionDate.setHours(0, 0, 0, 0);
+
+        // Ensure video belongs to user and is completed
+        const video = await getVideoById(input.videoId);
+        if (!video || video.userId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Video not found" });
+        }
+        if (video.status !== "completed") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Video is not ready for reservation" });
+        }
+
+        const dayStart = new Date(projectionDate);
+        const dayEnd = new Date(projectionDate);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        // Check slot availability (include holds that haven't expired)
+        const conflicting = await getBlockingReservationsByDateRange(dayStart, dayEnd);
+        const hasConflict = conflicting.some(r => r.slotNumber === input.slotNumber);
+        if (hasConflict) {
+          throw new TRPCError({ code: "CONFLICT", message: "Slot is no longer available" });
+        }
+
+        const holdDurationMs = 15 * 60 * 1000; // 15 minutes
+        const holdExpiresAt = new Date(Date.now() + holdDurationMs);
+
         const reservationId = await createReservation({
           userId: ctx.user.id,
           videoId: input.videoId,
-          projectionDate: input.projectionDate,
+          projectionDate,
           slotNumber: input.slotNumber,
-          status: "confirmed",
+          status: "pending_payment",
+          holdExpiresAt,
         });
         return { reservationId };
       }),
@@ -160,7 +195,7 @@ export const appRouter = router({
         const endDate = new Date(input.date);
         endDate.setHours(23, 59, 59, 999);
 
-        const existingReservations = await getReservationsByDateRange(startDate, endDate);
+        const existingReservations = await getBlockingReservationsByDateRange(startDate, endDate);
         const bookedSlots = existingReservations.map((r) => r.slotNumber);
 
         // Generate time slots (36 slots per day: 9:00-18:00, every 15 minutes)
@@ -199,9 +234,32 @@ export const appRouter = router({
           });
         }
 
+        const nextProjectionDate = input.projectionDate
+          ? new Date(input.projectionDate)
+          : new Date(reservation.projectionDate);
+        nextProjectionDate.setHours(0, 0, 0, 0);
+
+        const nextSlot = input.slotNumber ?? reservation.slotNumber;
+
+        // Check availability excluding the current reservation
+        const dayStart = new Date(nextProjectionDate);
+        const dayEnd = new Date(nextProjectionDate);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const conflicts = await getBlockingReservationsByDateRange(dayStart, dayEnd);
+        const hasConflict = conflicts.some(r => r.slotNumber === nextSlot && r.id !== reservation.id);
+        if (hasConflict) {
+          throw new TRPCError({ code: "CONFLICT", message: "Slot is no longer available" });
+        }
+
+        const holdDurationMs = 15 * 60 * 1000;
+        const holdExpiresAt = new Date(Date.now() + holdDurationMs);
+
         await updateReservationData(input.id, {
-          projectionDate: input.projectionDate,
-          slotNumber: input.slotNumber,
+          projectionDate: nextProjectionDate,
+          slotNumber: nextSlot,
+          status: "pending_payment",
+          holdExpiresAt,
         });
         return { success: true };
       }),
@@ -355,7 +413,7 @@ export const appRouter = router({
           template1Id: input.template1Id,
           template2Id: input.template2Id,
           template3Id: input.template3Id,
-          duration: 30, // Estimated duration
+          duration: 10, // Duration is now 10 seconds as videos are layered
           status: "processing",
           videoUrl: "", // Will be updated when render completes
           videoKey: "",
@@ -372,7 +430,7 @@ export const appRouter = router({
             const pollInterval = setInterval(async () => {
               try {
                 const status = await getRenderStatus(renderId);
-                
+
                 if (status.status === "done" && status.url) {
                   clearInterval(pollInterval);
                   // Update video record with final URL

@@ -28,22 +28,30 @@ export async function mergeVideos(
                   src: template1Url,
                 },
                 start: 0,
-                length: 10, // 10 seconds per template
+                length: 10,
               },
+            ],
+          },
+          {
+            clips: [
               {
                 asset: {
                   type: "video",
                   src: template2Url,
                 },
-                start: 10,
+                start: 0,
                 length: 10,
               },
+            ],
+          },
+          {
+            clips: [
               {
                 asset: {
                   type: "video",
                   src: template3Url,
                 },
-                start: 20,
+                start: 0,
                 length: 10,
               },
             ],
